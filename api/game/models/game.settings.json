@@ -56,7 +56,7 @@
       "plugin": "upload",
       "required": false
     },
-    "galery": {
+    "gallery": {
       "collection": "file",
       "via": "related",
       "allowedTypes": [
