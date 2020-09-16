@@ -6,30 +6,41 @@
  */
 const axios = require("axios");
 const slugify = require("slugify");
+const qs = require("querystring");
+
+function timeout(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function getGameInfo(slug) {
-  const jsdom = require("jsdom");
-  const { JSDOM } = jsdom;
-  const body = await axios.get(`https://www.gog.com/game/${slug}`);
-  const dom = new JSDOM(body.data);
+  try {
+    const jsdom = require("jsdom");
+    const { JSDOM } = jsdom;
+    const body = await axios.get(`https://www.gog.com/game/${slug}`);
+    const dom = new JSDOM(body.data);
 
-  const {
-    window: { document },
-  } = dom;
+    const {
+      window: { document },
+    } = dom;
 
-  const raitingElement = document.querySelector(".age-restrictions__icon use");
-  const description = document.querySelector(".description");
+    const raitingElement = document.querySelector(
+      ".age-restrictions__icon use"
+    );
+    const description = document.querySelector(".description");
 
-  return {
-    raiting: raitingElement
-      ? raitingElement
-          .getAttribute("xlink:href")
-          .replace(/_/g, "")
-          .replace(/[^\w-]+/g, "")
-      : "Free",
-    short_description: description.textContent.trim().slice(0, 50) + "...",
-    description: description.innerHTML,
-  };
+    return {
+      raiting: raitingElement
+        ? raitingElement
+            .getAttribute("xlink:href")
+            .replace(/_/g, "")
+            .replace(/[^\w-]+/g, "")
+        : "Free",
+      short_description: description.textContent.trim().slice(0, 50) + "...",
+      description: description.innerHTML,
+    };
+  } catch (error) {
+    console.log("getGameInfo=>", error);
+  }
 }
 
 async function getByName(name, entityName) {
@@ -76,28 +87,32 @@ async function createManyToManyData(products) {
 }
 
 async function setImage({ image, game, field = "cover" }) {
-  const url = `https:${image}_bg_crop_1680x655.jpg`;
-  const { data } = await axios.get(url, { responseType: "arraybuffer" });
-  const buffer = Buffer.from(data, "base64");
+  try {
+    const url = `https:${image}_bg_crop_1680x655.jpg`;
+    const { data } = await axios.get(url, { responseType: "arraybuffer" });
+    const buffer = Buffer.from(data, "base64");
 
-  const FormData = require("form-data");
-  const formData = new FormData();
+    const FormData = require("form-data");
+    const formData = new FormData();
 
-  formData.append("refId", game.id);
-  formData.append("ref", "game");
-  formData.append("field", field);
-  formData.append("files", buffer, { filename: `${game.slug}.jpg` });
+    formData.append("refId", game.id);
+    formData.append("ref", "game");
+    formData.append("field", field);
+    formData.append("files", buffer, { filename: `${game.slug}.jpg` });
 
-  console.info(`Uploading ${field} image: ${game.slug}.jpg`);
+    console.info(`Uploading ${field} image: ${game.slug}.jpg`);
 
-  await axios({
-    method: "POST",
-    url: `http://${strapi.config.host}:${strapi.config.port}/upload`,
-    data: formData,
-    headers: {
-      "Content-Type": `multipart/form-data; boundary=${formData._boundary}`,
-    },
-  });
+    await axios({
+      method: "POST",
+      url: `http://${strapi.config.host}:${strapi.config.port}/upload`,
+      data: formData,
+      headers: {
+        "Content-Type": `multipart/form-data; boundary=${formData._boundary}`,
+      },
+    });
+  } catch (error) {
+    console.log("setImage=>", error);
+  }
 }
 
 async function createGames(products) {
@@ -130,6 +145,13 @@ async function createGames(products) {
           });
 
           await setImage({ image: product.image, game });
+          Promise.all(
+            product.gallery
+              .slice(0, 5)
+              .map((url) => setImage({ image: url, game, field: "gallery" }))
+          );
+
+          await timeout(2000);
 
           return game;
         } catch (e) {
@@ -142,18 +164,15 @@ async function createGames(products) {
 
 module.exports = {
   populate: async (params) => {
-    const gogApiUrl = `https://www.gog.com/games/ajax/filtered?mediaType=game&page=1&sort=popularity`;
+    const gogApiUrl = `https://www.gog.com/games/ajax/filtered?mediaType=game&${qs.stringify(
+      params
+    )}`;
 
     const {
       data: { products },
     } = await axios.get(gogApiUrl);
 
-    await createManyToManyData([products[0], products[1]]);
-    await createGames([products[0], products[1]]);
-    // await create(products[0].publisher, "publisher");
-
-    // await create(products[0].developer, "developer");
-
-    // console.log(await getGameInfo(products[0].slug));
+    await createManyToManyData(products);
+    await createGames(products);
   },
 };
