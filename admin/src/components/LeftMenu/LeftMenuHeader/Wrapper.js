@@ -11,7 +11,9 @@ const Wrapper = styled.div`
       display: block;
       height: ${theme.main.sizes.leftMenu.height};
       background-image: url(${Logo});
+      background-repeat: no-repeat;
       background-position: center center;
+      background-size: 12rem;
     }
   `}
 `;

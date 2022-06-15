@@ -10,6 +10,7 @@ const Wrapper = styled.div`
     width: ${theme.main.sizes.leftMenu.width};
     background: ${theme.main.colors.won.blueLight};
 
+    /* scrollbar overrides */
     * {
       ::-webkit-scrollbar {
         width: 7px;
@@ -21,19 +22,15 @@ const Wrapper = styled.div`
       }
 
       ::-webkit-scrollbar-thumb {
-        background-color: ${(props) =>
-          props.theme.main.colors.leftMenu["title-color"]};
+        background-color: ${theme.main.colors.leftMenu["title-color"]};
       }
 
       ::-webkit-scrollbar-thumb:hover {
-        background-color: ${(props) =>
-          props.theme.main.colors.leftMenu["link-color"]};
+        background-color: ${theme.main.colors.leftMenu["link-color"]};
       }
 
       /* firefox */
-      scrollbar-color: ${(props) =>
-          props.theme.main.colors.leftMenu["title-color"]}
-        transparent;
+      scrollbar-color: ${theme.main.colors.leftMenu["title-color"]} transparent;
     }
   `}
 `;
